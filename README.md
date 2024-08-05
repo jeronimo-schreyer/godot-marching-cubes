@@ -33,3 +33,18 @@ To use the scenes and generate a mesh, follow these steps:
 
 - Tested on Godot Engine 4.3
 - A compatible GPU for running the compute shader implementation
+
+## Notes
+
+- The CPU implementation is suitable for understanding the basic workings of the Marching Cubes algorithm.
+- The GPU implementation showcases how compute shaders can be utilized for improved performance in processing volumetric data.
+
+## References
+
+- [Sebastian Lague's YouTube Video on Marching Cubes](https://www.youtube.com/watch?v=M3iI2l0ltbE)
+- [SebLague/Godot-Marching-Cubes on GitHub](https://github.com/SebLague/Godot-Marching-Cubes)
+- [jbernardic/Godot-Smooth-Voxels on GitHub](https://github.com/jbernardic/Godot-Smooth-Voxels)
+
+## License
+
+This project is licensed under the GNU General Public License v3.0. See the `LICENSE` file for more details.
