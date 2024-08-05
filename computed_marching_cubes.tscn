@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3 uid="uid://dom3evjjr3li7"]
+
+[ext_resource type="Script" path="res://scripts/gpu.gd" id="1_3cpi7"]
+[ext_resource type="CompressedTexture3D" uid="uid://c15es5m28ycil" path="res://data/64x64x64.png" id="2_ogwbo"]
+
+[node name="MeshInstance3D" type="MeshInstance3D"]
+script = ExtResource("1_3cpi7")
+DATA = ExtResource("2_ogwbo")
