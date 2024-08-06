@@ -52,20 +52,25 @@ func _process(delta):
 
 
 func generate():
+	var time_send: int = Time.get_ticks_usec()
 	var voxel_grid_size := Vector3(DATA.get_width(), DATA.get_height(), DATA.get_depth())
 	var voxel_grid := MarchingCubes.VoxelGrid.new(voxel_grid_size)
 	voxel_grid.set_data(DATA)
-
+	print("Time to create voxel: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
+	
 	# march cubes
+	time_send = Time.get_ticks_usec()
 	var vertices = PackedVector3Array()
 	for z in voxel_grid.size.x - 1:
 		for y in voxel_grid.size.y - 1:
 			for x in voxel_grid.size.z - 1:
 				march_cube(x, y, z, voxel_grid, vertices)
+	print("Time to March Cubes: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
 
 	print("Total vertices ", vertices.size())
 
 	# draw
+	time_send = Time.get_ticks_usec()
 	var surface_tool = SurfaceTool.new()
 	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 
@@ -78,7 +83,7 @@ func generate():
 	surface_tool.generate_normals()
 	surface_tool.index()
 	call_deferred("set_mesh", surface_tool.commit())
-
+	print("Time to create surface tool: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
 
 func march_cube(x:int, y:int, z:int, voxel_grid:MarchingCubes.VoxelGrid, vertices:PackedVector3Array):
 	for edge_index in get_triangulation(x, y, z, voxel_grid):

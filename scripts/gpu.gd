@@ -87,6 +87,7 @@ func setup_bindings():
 	input_params_uniform.add_id(buffers[0])
 
 	# Create counter buffer
+	
 	var counter_bytes = PackedFloat32Array([0]).to_byte_array()
 	buffers.push_back(rd.storage_buffer_create(counter_bytes.size(), counter_bytes))
 
@@ -130,10 +131,11 @@ func setup_bindings():
 func compute():
 	# Update input buffers and clear output ones
 	# This one is actually not always needed. Comment to see major speed optimization
+	var time_send: int = Time.get_ticks_usec()
 	var input = get_params()
 	var input_bytes = input.to_byte_array()
 	rd.buffer_update(buffers[0], 0, input_bytes.size(), input_bytes)
-
+	
 	var total_cells = DATA.get_width() * DATA.get_height() * DATA.get_depth()
 	var vectors = PackedColorArray()
 	vectors.resize(total_cells * 5 * 3) # 5 triangles max per cell, 3 vertices per triangle
@@ -141,29 +143,39 @@ func compute():
 
 	var counter_bytes = PackedFloat32Array([0]).to_byte_array()
 	rd.buffer_update(buffers[1], 0, counter_bytes.size(), counter_bytes)
+	print("Time to update buffer: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
 
 	# Dispatch compute and uniforms
+	time_send = Time.get_ticks_usec()
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, pipeline)
 	rd.compute_list_bind_uniform_set(compute_list, uniform_set, uniform_set_index)
 	rd.compute_list_dispatch(compute_list, DATA.get_width() / 8, DATA.get_height() / 8, DATA.get_depth() / 8)
 	rd.compute_list_end()
+	print("Time to dispatch uniforms: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
 
 	# Submit to GPU and wait for sync
+	time_send = Time.get_ticks_usec()
 	rd.submit()
 	rd.sync()
+	print("Time to submit and sync: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
 
 	# Read back the data from the buffer
+	time_send = Time.get_ticks_usec()
 	var total_triangles = rd.buffer_get_data(buffers[1]).to_int32_array()[0]
 	var output_array := rd.buffer_get_data(buffers[2]).to_float32_array()
-
+	print("Time to read back buffer: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
+	
+	time_send = Time.get_ticks_usec()
 	output = PackedVector3Array()
 	for i in range(0, total_triangles * 12, 12): # Each triangle spans for 12 floats
 		output.push_back(Vector3(output_array[i+0], output_array[i+1], output_array[i+2]))
 		output.push_back(Vector3(output_array[i+4], output_array[i+5], output_array[i+6]))
 		output.push_back(Vector3(output_array[i+8], output_array[i+9], output_array[i+10]))
+	print("Time iterate vertices: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
 	print("Total vertices ", output.size())
-
+	
+	time_send = Time.get_ticks_usec()
 	# draw
 	var surface_tool = SurfaceTool.new()
 	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -177,3 +189,4 @@ func compute():
 	surface_tool.generate_normals()
 	surface_tool.index()
 	call_deferred("set_mesh", surface_tool.commit())
+	print("Time to create surface tool: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
