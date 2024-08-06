@@ -87,7 +87,7 @@ func setup_bindings():
 	input_params_uniform.add_id(buffers[0])
 
 	# Create counter buffer
-	
+
 	var counter_bytes = PackedFloat32Array([0]).to_byte_array()
 	buffers.push_back(rd.storage_buffer_create(counter_bytes.size(), counter_bytes))
 
@@ -135,7 +135,7 @@ func compute():
 	var input = get_params()
 	var input_bytes = input.to_byte_array()
 	rd.buffer_update(buffers[0], 0, input_bytes.size(), input_bytes)
-	
+
 	var total_cells = DATA.get_width() * DATA.get_height() * DATA.get_depth()
 	var vectors = PackedColorArray()
 	vectors.resize(total_cells * 5 * 3) # 5 triangles max per cell, 3 vertices per triangle
@@ -165,7 +165,7 @@ func compute():
 	var total_triangles = rd.buffer_get_data(buffers[1]).to_int32_array()[0]
 	var output_array := rd.buffer_get_data(buffers[2]).to_float32_array()
 	print("Time to read back buffer: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
-	
+
 	time_send = Time.get_ticks_usec()
 	output = PackedVector3Array()
 	for i in range(0, total_triangles * 12, 12): # Each triangle spans for 12 floats
@@ -174,7 +174,7 @@ func compute():
 		output.push_back(Vector3(output_array[i+8], output_array[i+9], output_array[i+10]))
 	print("Time iterate vertices: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
 	print("Total vertices ", output.size())
-	
+
 	time_send = Time.get_ticks_usec()
 	# draw
 	var surface_tool = SurfaceTool.new()

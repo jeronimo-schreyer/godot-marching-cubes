@@ -57,7 +57,7 @@ func generate():
 	var voxel_grid := MarchingCubes.VoxelGrid.new(voxel_grid_size)
 	voxel_grid.set_data(DATA)
 	print("Time to create voxel: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
-	
+
 	# march cubes
 	time_send = Time.get_ticks_usec()
 	var vertices = PackedVector3Array()
