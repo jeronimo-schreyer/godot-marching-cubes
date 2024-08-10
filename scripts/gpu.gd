@@ -98,15 +98,15 @@ func setup_bindings():
 
 	# Create the triangles buffer
 	var total_cells = DATA.get_width() * DATA.get_height() * DATA.get_depth()
-	var vectors = PackedColorArray()
-	vectors.resize(total_cells * 5 * 3) # 5 triangles max per cell, 3 vertices per triangle
-	var vectors_bytes = vectors.to_byte_array()
-	buffers.push_back(rd.storage_buffer_create(vectors_bytes.size(), vectors_bytes))
+	var vertices = PackedColorArray()
+	vertices.resize(total_cells * 5 * (3 + 1)) # 5 triangles max per cell, 3 vertices and 1 normal per triangle
+	var vertices_bytes = vertices.to_byte_array()
+	buffers.push_back(rd.storage_buffer_create(vertices_bytes.size(), vertices_bytes))
 
-	var vectors_uniform := RDUniform.new()
-	vectors_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
-	vectors_uniform.binding = 2
-	vectors_uniform.add_id(buffers[2])
+	var vertices_uniform := RDUniform.new()
+	vertices_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	vertices_uniform.binding = 2
+	vertices_uniform.add_id(buffers[2])
 
 	# Create the LUT buffer
 	var lut_array = PackedInt32Array()
@@ -123,7 +123,7 @@ func setup_bindings():
 	uniform_set = rd.uniform_set_create([
 		input_params_uniform,
 		counter_uniform,
-		vectors_uniform,
+		vertices_uniform,
 		lut_uniform,
 	], shader, uniform_set_index)
 
@@ -137,9 +137,9 @@ func compute():
 	rd.buffer_update(buffers[0], 0, input_bytes.size(), input_bytes)
 
 	var total_cells = DATA.get_width() * DATA.get_height() * DATA.get_depth()
-	var vectors = PackedColorArray()
-	vectors.resize(total_cells * 5 * 3) # 5 triangles max per cell, 3 vertices per triangle
-	var vectors_bytes = vectors.to_byte_array()
+	var vertices = PackedColorArray()
+	vertices.resize(total_cells * 5 * (3 + 1)) # 5 triangles max per cell, 3 vertices and 1 normal per triangle
+	var vertices_bytes = vertices.to_byte_array()
 
 	var counter_bytes = PackedFloat32Array([0]).to_byte_array()
 	rd.buffer_update(buffers[1], 0, counter_bytes.size(), counter_bytes)
@@ -167,26 +167,56 @@ func compute():
 	print("Time to read back buffer: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
 
 	time_send = Time.get_ticks_usec()
-	output = PackedVector3Array()
-	for i in range(0, total_triangles * 12, 12): # Each triangle spans for 12 floats
-		output.push_back(Vector3(output_array[i+0], output_array[i+1], output_array[i+2]))
-		output.push_back(Vector3(output_array[i+4], output_array[i+5], output_array[i+6]))
-		output.push_back(Vector3(output_array[i+8], output_array[i+9], output_array[i+10]))
+	output = {
+		"vertices": PackedVector3Array(),
+		"normals": PackedVector3Array(),
+	}
+
+	for i in range(0, total_triangles * 16, 16): # Each triangle spans for 16 floats
+		output["vertices"].push_back(Vector3(output_array[i+0], output_array[i+1], output_array[i+2]))
+		output["vertices"].push_back(Vector3(output_array[i+4], output_array[i+5], output_array[i+6]))
+		output["vertices"].push_back(Vector3(output_array[i+8], output_array[i+9], output_array[i+10]))
+
+		var normal = Vector3(output_array[i+12], output_array[i+13], output_array[i+14])
+		# Each vector will point to the same normal
+		for j in range(3):
+			output["normals"].push_back(normal)
+
 	print("Time iterate vertices: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
-	print("Total vertices ", output.size())
+	print("Total vertices ", output["vertices"].size())
+
+	create_mesh()
+
+func create_mesh():
+	var time_send: int = Time.get_ticks_usec()
+	create_mesh_with_array()
+	print("Time to create with array mesh: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
 
 	time_send = Time.get_ticks_usec()
-	# draw
+	create_mesh_with_surface()
+	print("Time to create with surface tool: " + Utils.parse_time(Time.get_ticks_usec() - time_send))
+
+func create_mesh_with_array():
+	var mesh_data = []
+	mesh_data.resize(Mesh.ARRAY_MAX)
+	mesh_data[Mesh.ARRAY_VERTEX] = output["vertices"]
+	mesh_data[Mesh.ARRAY_NORMAL] = output["normals"]
+
+	var array_mesh = ArrayMesh.new()
+	array_mesh.clear_surfaces()
+	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, mesh_data)
+	call_deferred("set_mesh", array_mesh)
+
+func create_mesh_with_surface():
 	var surface_tool = SurfaceTool.new()
 	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 
 	if FLAT_SHADED:
 		surface_tool.set_smooth_group(-1)
 
-	for vert in output:
+	for vert in output["vertices"]:
 		surface_tool.add_vertex(vert)
 
 	surface_tool.generate_normals()
 	surface_tool.index()
 	call_deferred("set_mesh", surface_tool.commit())
-	print("Time to create surface tool: " + Utils.parse_time(Time.get_ticks_usec() - time_send))

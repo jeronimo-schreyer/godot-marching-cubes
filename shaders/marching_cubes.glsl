@@ -4,6 +4,7 @@
 
 struct Triangle {
 	vec4 v[3];
+	vec4 normal;
 };
 
 
@@ -61,8 +62,8 @@ const ivec2 edges[12] =
 };
 
 
-float voxel_value(float x, float y, float z) {
-	return params.data[int(x + params.size_x * (y + params.size_y * z))];
+float voxel_value(vec3 position) {
+	return params.data[int(position.x + params.size_x * (position.y + params.size_y * position.z))];
 }
 
 vec3 calculate_interpolation(vec3 v1, vec3 v2)
@@ -70,8 +71,8 @@ vec3 calculate_interpolation(vec3 v1, vec3 v2)
 	if (params.flat_shaded == 1.0) {
 		return (v1 + v2) * 0.5;
 	} else {
-		float val1 = voxel_value(v1.x, v1.y, v1.z);
-		float val2 = voxel_value(v2.x, v2.y, v2.z);
+		float val1 = voxel_value(v1);
+		float val2 = voxel_value(v2);
 		return mix(v1, v2, (params.iso - val1) / (val2 - val1));
 	}
 }
@@ -82,10 +83,7 @@ void main() {
 
 	int triangulation = 0;
 	for (int i = 0; i < 8; ++i) {
-		triangulation |= int(voxel_value(	grid_position.x + points[i].x,
-											grid_position.y + points[i].y,
-											grid_position.z + points[i].z)
-						> params.iso) << i;
+		triangulation |= int(voxel_value(grid_position + points[i]) > params.iso) << i;
 	}
 
 	for (int i = 0; i < 16; i += 3) {
@@ -103,6 +101,11 @@ void main() {
 			vec3 p = calculate_interpolation(grid_position + p0, grid_position + p1);
 			t.v[j] = vec4(p, 0.0);
 		}
+		
+		// calculate normals
+		vec3 ab = t.v[1].xyz - t.v[0].xyz;
+		vec3 ac = t.v[2].xyz - t.v[0].xyz;
+		t.normal = -vec4(normalize(cross(ab,ac)), 0.0);
 		
 		output_buffer.data[atomicAdd(counter, 1u)] = t;
 	}
